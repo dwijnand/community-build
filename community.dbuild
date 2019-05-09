@@ -17,8 +17,6 @@ build += {
   sbt-version: ${vars.sbt-version}
   extraction-version: ${vars.scala-version}
 
-  space: scala
-
   projects: [{
 
     name:  "scala"
