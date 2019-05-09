@@ -40,6 +40,8 @@ else
     export NODE=node
 fi
 
+export version=2.11.12
+
 # use -n since running locally you don't want notifications sent,
 # and on our Jenkins setup it doesn't actually work (for now anyway)
 

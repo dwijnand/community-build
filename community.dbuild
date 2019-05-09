@@ -4,89 +4,79 @@
 // vars definitions, which are used later in this file as well.
 //
 
+vars: {
+  scala-version: ""
+  scala-version: ${?version}
+}
 
 vars.base: {
 }
 include file("common.conf")
 
-//
-// And the generation of the artifacts more closely related to the Scala compiler.
-//
 build += {
-  extraction-version: "2.11.12"
-  cross-version: disabled
   sbt-version: ${vars.sbt-version}
-  projects: [
-  // Scala 2.11.x
-  {
+  extraction-version: ${vars.scala-version}
+
+  space: scala
+
+  projects: [{
+
     name:  "scala"
     system: assemble
-    extra.parts: {
-      cross-version: standard
-      sbt-version: ${vars.sbt-version}
-      extraction-version: "2.11.12"
-      cross-version: disabled
-    }
+    cross-version: binary
     extra.parts.projects: [
       {
-        system: "scala"
-        name:  "scala"
-        uri:    "https://github.com/"${vars.scala-ref}
-        extra.build-options: ["-Dlocker.skip=1", "-Ddocs.skip=1"] // speed things up a little
+        set-version: ${vars.scala-version}
+        name:   scala-library
+        system: aether
+        uri:   "aether:org.scala-lang#scala-library;"${vars.scala-version}
+        extra.sources: true  // Scala.js wants this
+      }
+      {
+        set-version: ${vars.scala-version}
+        name:   scala-reflect
+        system: aether
+        uri:   "aether:org.scala-lang#scala-reflect;"${vars.scala-version}
+      }
+      {
+        set-version: ${vars.scala-version}
+        name:   scala-compiler
+        system: aether
+        uri:   "aether:org.scala-lang#scala-compiler;"${vars.scala-version}
       }
       {
         name: "scala-xml"
-        uri: "https://github.com/"${vars.scala-xml-ref}
-        extra.commands: [
-          // override scalaVersion in the modules since otherwise we get
-          // whatever random Scala version the module has -- it might be a
-          // 2.12.x version, we don't want that!
-          "set every scalaVersion := \"2.11.12\""
+        // master has moved to a new 2.x series, but the Scala 2.12 compiler
+        // is going to continue depending on 1.x, in fact Scala 2.12 will
+        // probably stay frozen at 1.0.6 forever. but the v1.0.6 tag won't
+        // build on JDK 11, so let's use the 1.x branch
+        uri: "https://github.com/scala/scala-xml.git#1.x"
+        // this gives us "scala-xml_2.11" which is what we want, sbt 1 will get
+        // upset if there are two different kinds of scala-xml dependencies
+        // floating around (https://github.com/scala/community-builds/issues/679)
+        cross-version: standard
+        // override sbt version here since otherwise we get
+        // whatever random sbt version the module has
+        extra.sbt-version: 0.13.18
+        extra.commands: ${vars.default-commands} [
+          // override scalaVersion here since otherwise we get
+          // whatever random Scala version the module has
+          "set scalaVersion := \""${vars.scala-version}"\""
           // work around https://github.com/scala/community-builds/issues/575
           // (in a community build context, we don't need MiMa to run)
           "set every ScalaModulePlugin.mimaPreviousVersion := None"
         ]
         extra.projects: ["xml"]
       }
-      {
-        name: "scala-parser-combinators"
-        uri: "https://github.com/"${vars.scala-parser-combinators-ref}
-        extra.sbt-version: "1.2.8"
-        extra.commands: [
-          // override scalaVersion in the modules since otherwise we get
-          // whatever random Scala version the module has -- it might be a
-          // 2.12.x version, we don't want that!
-          "set every scalaVersion := \"2.11.12\""
-          // work around https://github.com/scala/community-builds/issues/575
-          // (in a community build context, we don't need MiMa to run)
-          "set every ScalaModulePlugin.mimaPreviousVersion := None"
-        ]
-        extra.projects: ["scala-parser-combinators"]   // no JS or Native
-      }
     ]
   }
 
-  ${vars.base} {
-    name: "scala-continuations"
-    uri: "https://github.com/"${vars.scala-continuations-ref}
-    // Trying to avoid unexplained error on Toolbox based tests: "bad option: -P:continuations:enable"
-    // This is reproducible outside of dbuild, but hard to pin down.
-    // Example: https://gist.github.com/retronym/9122414
-    // Note the plugin JAR was rebuild on inspect `test:test`, even though there was no source change.
-    // After that, the next `test` worked.
-    extra.commands: ["clean", "plugin/compile:package"]
-  }
+]}
 
 //  ${vars.base} {
 //    name: "scala-partest"
 //    uri: "https://github.com/"${vars.scala-partest-ref}
 //  }
-
-  ${vars.base} {
-    name: scalacheck
-    uri:    "https://github.com/"${vars.scalacheck-ref}
-    extra.run-tests: false
-  }
 
 //  ${vars.base} {
 //    name: "scala-swing"
@@ -97,6 +87,3 @@ build += {
 //      "set every ScalaModulePlugin.mimaPreviousVersion := None"
 //    ]
 //  }
-
-]
-}
